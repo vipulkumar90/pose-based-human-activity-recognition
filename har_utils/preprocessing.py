@@ -7,6 +7,20 @@ from har_utils.features import (
     create_multiscale_windowed_features
 )
 
+# English:
+# Purpose: Print summary statistics about NaN and Inf values in a subject DataFrame.
+# Parameters:
+# - subject_original: DataFrame with pose keypoints and labels.
+# - subject_name: Identifier string for the subject (default: 'Name not provided').
+# Returns:
+# - None. Side effect: Prints NaN and Inf counts to console.
+# 日本語:
+# 目的: 被験者DataFrameのNaN値とInf値の要約統計量を表示します。
+# パラメータ:
+# - subject_original: ポーズキーポイントとラベルを含むDataFrame。
+# - subject_name: 被験者識別文字列（デフォルト: 'Name not provided'）。
+# 戻り値:
+# - なし。副作用: NaN値とInf値の数をコンソールに出力します。
 def do_sanity_check(subject_original, subject_name="Name not provided"):
     print(f"\n{'_'*60}\n")
     print(f"{' '*15}Sanity Check - {subject_name}")
@@ -48,6 +62,18 @@ def do_sanity_check(subject_original, subject_name="Name not provided"):
 # We use shoulder width as a scaling factor so
 # all skeletons are represented at roughly the same scale.
 # ==========================================================
+# English:
+# Purpose: Calculate Euclidean distance between left and right shoulders.
+# Parameters:
+# - subject: DataFrame with left_shoulder_x, left_shoulder_y, right_shoulder_x, right_shoulder_y columns.
+# Returns:
+# - Series of shoulder width values, one per frame.
+# 日本語:
+# 目的: 左肩と右肩間のユークリッド距離を計算します。
+# パラメータ:
+# - subject: 肩の座標列を含むDataFrame。
+# 戻り値:
+# - フレームごとの肩幅値のSeries。
 def get_shoulder_width(subject):
     shoulder_width = np.sqrt(
         (subject['left_shoulder_x'] - subject['right_shoulder_x']) ** 2 +
@@ -56,12 +82,21 @@ def get_shoulder_width(subject):
     
     return shoulder_width
 
-# =========================================================
+# English:
+# Purpose: Calculate Euclidean distance between torso endpoints (mid-shoulder to mid-hip).
+# More stable scaling factor than shoulder width for skeleton normalization.
+# Parameters:
+# - subject: DataFrame with shoulder and hip keypoint coordinates.
+# Returns:
+# - Series of torso height values, one per frame.
+# 日本語:
+# 目的: 胴体エンドポイント（肩中心から腰中心）間のユークリッド距離を計算します。
+# スケルトン正規化用のスケーリング係数として肩幅より安定しています。
+# パラメータ:
+# - subject: 肩と腰のキーポイント座標を含むDataFrame。
+# 戻り値:
+# - フレームごとの胴体高さ値のSeries。
 def get_torso_height(subject):
-    """
-    Vertical distance from mid-hip to mid-shoulder.
-    More stable vertical reference than shoulder width.
-    """
     mid_shoulder_y = (subject['left_shoulder_y'] + subject['right_shoulder_y']) / 2
     mid_hip_y      = (subject['left_hip_y']      + subject['right_hip_y'])      / 2
 
@@ -72,7 +107,22 @@ def get_torso_height(subject):
     )
     return torso_height
 
-# Skeleton Normalization
+# English:
+# Purpose: Normalize skeleton keypoints to body-relative coordinates and scale invariant.
+# Center at hip midpoint, scale by torso height or shoulder width for uniform skeleton representation.
+# Parameters:
+# - subject_original: DataFrame with raw keypoint coordinates (17 keypoints with _x, _y columns).
+# - use_torso_height: If True, use torso height for scaling; else use shoulder width (default: True).
+# Returns:
+# - New DataFrame with normalized keypoint coordinates, same shape as input.
+# 日本語:
+# 目的: スケルトンキーポイントを身体相対座標にスケール不変な正規化します。
+# 腰中点を中心に配置し、胴体高さまたは肩幅でスケーリングして均一なスケルトン表現を実現します。
+# パラメータ:
+# - subject_original: 生のキーポイント座標を含むDataFrame（17キーポイント）。
+# - use_torso_height: Trueの場合は胴体高さでスケーリング、Falseの場合は肩幅を使用（デフォルト: True）。
+# 戻り値:
+# - 正規化されたキーポイント座標を含む新しいDataFrame、入力と同じ形状。
 def modify_skeleton_normalization(subject_original, use_torso_height=True):
     
     # Create a copy
@@ -164,6 +214,20 @@ def modify_skeleton_normalization(subject_original, use_torso_height=True):
     # ==========================================================
     return subject_transformed
 
+# English:
+# Purpose: Filter out frames with abnormally small shoulder width (likely poor pose detections).
+# Parameters:
+# - un_norm_subject: Original DataFrame before normalization (to compute shoulder width).
+# - norm_subject: Normalized DataFrame to filter.
+# Returns:
+# - Filtered DataFrame with only frames having shoulder_width >= SHOULDER_WIDTH_THRESHOLD.
+# 日本語:
+# 目的: 異常に小さい肩幅のフレーム（ポーズ検出エラー）を除外します。
+# パラメータ:
+# - un_norm_subject: 正規化前の元のDataFrame（肩幅計算用）。
+# - norm_subject: フィルタリング対象の正規化DataFrame。
+# 戻り値:
+# - SHOULDER_WIDTH_THRESHOLD以上の肩幅を持つフレームのみを含むフィルタリングされたDataFrame。
 def drop_bad_frames(un_norm_subject, norm_subject):
     # Get the shoulder width using not normalized df
     shoulder_width = get_shoulder_width(un_norm_subject)
@@ -177,6 +241,22 @@ def drop_bad_frames(un_norm_subject, norm_subject):
     # print(f"Total Number of Bad Frames where shoulder widht was less than 10: {n_bad_frames}")
     return subject_transformed
 
+# English:
+# Purpose: Execute complete preprocessing pipeline for a single subject.
+# Sequentially: denormalize, normalize, feature extraction, and multi-scale windowing.
+# Parameters:
+# - subject_original: DataFrame with raw keypoints and Action Label column.
+# - window_sizes: Tuple of (short_window, long_window) frame sizes for windowing (default: (15, 60)).
+# Returns:
+# - DataFrame with windowed features ready for model training or evaluation.
+# 日本語:
+# 目的: 単一被験者の完全な前処理パイプラインを実行します。
+# 順序: ドロップ、正規化、特徴抽出、マルチスケールウィンドウ処理。
+# パラメータ:
+# - subject_original: 生のキーポイントとActionLabel列を含むDataFrame。
+# - window_sizes: ウィンドウ処理用の(short_window, long_window)フレームサイズのタプル（デフォルト: (15, 60)）。
+# 戻り値:
+# - モデルトレーニングまたは評価用のウィンドウ処理された特徴量を含むDataFrame。
 def preprocessing_pipeline(subject_original, window_sizes=(15, 60)):
 
     # 1. First we will drop any NaN labelled rows
@@ -215,6 +295,20 @@ def preprocessing_pipeline(subject_original, window_sizes=(15, 60)):
     # We return the processed subject
     return windowed
     
+# English:
+# Purpose: Apply preprocessing pipeline to all subjects in a dataset.
+# Parameters:
+# - all_subject: Dictionary mapping subject IDs (FILE_NAME_SUFFIX) to DataFrames.
+# - window_size: Tuple of (short_window, long_window) frame sizes for windowing (default: (15, 60)).
+# Returns:
+# - Dictionary with same keys mapping to preprocessed windowed DataFrames.
+# 日本語:
+# 目的: データセット内のすべての被験者に前処理パイプラインを適用します。
+# パラメータ:
+# - all_subject: 被験者ID（FILE_NAME_SUFFIX）をDataFrameにマッピングする辞書。
+# - window_size: ウィンドウ処理用の(short_window, long_window)フレームサイズのタプル（デフォルト: (15, 60)）。
+# 戻り値:
+# - 同じキーで前処理されたウィンドウ処理DataFrameにマッピングされた辞書。
 def preprocess_all_subjects(all_subject, window_size=(15, 60)):
     all_subject_norm = {}
     for suffix in FILE_NAME_SUFFIX:
