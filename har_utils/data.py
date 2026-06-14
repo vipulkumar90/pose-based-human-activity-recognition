@@ -1,4 +1,5 @@
 import pandas as pd
+from sklearn.model_selection import train_test_split
 from har_utils.config import BASE_FILE_NAME, BASE_DIR, FILE_TYPE
 import random
 
@@ -36,7 +37,7 @@ def get_subject(suffix):
 # - border_char: ヘッダー上下の罫線を描画するために使用する文字。
 # 戻り値:
 # - なし。副作用: 標準出力に整形済みヘッダーを出力します。
-def get_clean_header(title='No Title', line_len=80, border_char='='):
+def print_clean_header(title='No Title', line_len=80, border_char='='):
     print(f"\n{border_char * line_len}")
     print(f"{title:^{line_len}}")
     print(f"{border_char * line_len}")
@@ -124,5 +125,64 @@ def get_X_y_split_base(train, test, show_shape=False):
 # 戻り値:
 # - get_X_y_split_base の出力: (X_train, y_train, X_test, y_test)。
 def get_X_y_split(all_subject, random_state=42, show_shape=False):
+    if len(all_subject) < 2:
+        raise ValueError("At least 2 subjects are required for train/test split.")
     train, test = get_train_test_split(all_subject, random_state)
     return get_X_y_split_base(train, test, show_shape)
+
+# English:
+# Purpose:
+# Split a single subject dataset into training and testing sets.
+# The feature matrix and target labels are extracted automatically,
+# and an optional stratified split is performed.
+#
+# Parameters:
+# - subject: DataFrame containing features and the Action Label column.
+# - label_column: Name of the target label column (default: "Action Label").
+# - test_size: Fraction of the dataset reserved for testing (default: 0.2).
+# - random_state: Random seed for reproducible splitting (default: 42).
+# - stratify: Whether to preserve class distribution during splitting (default: True).
+#
+# Returns:
+# - X_train: Training feature matrix.
+# - y_train: Training labels.
+# - X_test: Testing feature matrix.
+# - y_test: Testing labels.
+#
+# 日本語:
+# 目的:
+# 単一被験者のデータセットを学習用データとテスト用データに分割します。
+# 特徴量と目的ラベルを自動的に抽出し、
+# 必要に応じて層化抽出（Stratified Split）を行います。
+#
+# パラメータ:
+# - subject: 特徴量と Action Label 列を含むDataFrame。
+# - label_column: 目的ラベル列の名前（デフォルト: "Action Label"）。
+# - test_size: テストデータとして使用する割合（デフォルト: 0.2）。
+# - random_state: 再現性を確保するための乱数シード（デフォルト: 42）。
+# - stratify: クラス分布を維持してデータを分割するかどうか（デフォルト: True）。
+#
+# 戻り値:
+# - X_train: 学習用特徴量。
+# - y_train: 学習用ラベル。
+# - X_test: テスト用特徴量。
+# - y_test: テスト用ラベル。
+def get_X_y_split_single_subject(
+    subject,
+    label_column="Action Label",
+    test_size=0.2,
+    random_state=42,
+    stratify=True
+):
+    X = subject.drop(columns=[label_column])
+    y = subject[label_column]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=test_size,
+        random_state=random_state,
+        stratify=y if stratify else None
+    )
+
+    return X_train, y_train, X_test, y_test

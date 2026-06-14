@@ -6,6 +6,7 @@ from har_utils.features import (
     add_acceleration_features,
     create_multiscale_windowed_features
 )
+from tqdm.auto import tqdm
 
 # English:
 # Purpose: Print summary statistics about NaN and Inf values in a subject DataFrame.
@@ -242,56 +243,92 @@ def drop_bad_frames(un_norm_subject, norm_subject):
     return subject_transformed
 
 # English:
-# Purpose: Execute complete preprocessing pipeline for a single subject.
-# Sequentially: denormalize, normalize, feature extraction, and multi-scale windowing.
+# Purpose: Execute the complete preprocessing pipeline for a single subject.
+# The pipeline performs data cleaning, skeleton normalization, feature extraction,
+# and multi-scale temporal windowing. Intermediate results can be returned for
+# inspection by specifying the desired pipeline stage.
 # Parameters:
-# - subject_original: DataFrame with raw keypoints and Action Label column.
-# - window_sizes: Tuple of (short_window, long_window) frame sizes for windowing (default: (15, 60)).
+# - subject_original: DataFrame containing raw pose keypoints and the Action Label column.
+# - window_sizes: Tuple of (short_window, long_window) frame sizes for windowing
+#                 (default: (15, 60)).
+# - return_stage: Pipeline stage to return. Supported values:
+#                 'normalized' - normalized skeleton coordinates.
+#                 'clean'      - normalized data after bad-frame removal and label standardization.
+#                 'features'   - frame-level features before windowing.
+#                 'windowed'   - final windowed features (default).
 # Returns:
-# - DataFrame with windowed features ready for model training or evaluation.
-# 日本語:
-# 目的: 単一被験者の完全な前処理パイプラインを実行します。
-# 順序: ドロップ、正規化、特徴抽出、マルチスケールウィンドウ処理。
-# パラメータ:
-# - subject_original: 生のキーポイントとActionLabel列を含むDataFrame。
-# - window_sizes: ウィンドウ処理用の(short_window, long_window)フレームサイズのタプル（デフォルト: (15, 60)）。
-# 戻り値:
-# - モデルトレーニングまたは評価用のウィンドウ処理された特徴量を含むDataFrame。
-def preprocessing_pipeline(subject_original, window_sizes=(15, 60)):
+# - DataFrame corresponding to the selected preprocessing stage.
 
+# 日本語:
+# 目的: 単一被験者に対して完全な前処理パイプラインを実行します。
+# このパイプラインでは、データクリーニング、スケルトン正規化、
+# 特徴量抽出、およびマルチスケール時間窓処理を順番に実行します。
+# return_stageを指定することで、途中段階の結果を取得できます。
+# パラメータ:
+# - subject_original: 生の姿勢キーポイントと Action Label 列を含むDataFrame。
+# - window_sizes: ウィンドウ処理用の(short_window, long_window)フレームサイズのタプル
+#                 （デフォルト: (15, 60)）。
+# - return_stage: 返却する前処理段階。指定可能な値:
+#                 'normalized' - スケルトン正規化後のデータ。
+#                 'clean'      - 不良フレーム除去およびラベル統一後のデータ。
+#                 'features'   - ウィンドウ処理前のフレーム単位特徴量。
+#                 'windowed'   - 最終的なウィンドウ化特徴量（デフォルト）。
+# 戻り値:
+# - 指定した前処理段階に対応するDataFrame。
+def preprocessing_pipeline(
+        subject_original, 
+        window_sizes=(15, 60),
+        stride=10,
+        return_stage='windowed',
+        drop_bad_shoulder_frames=False):
+    
     # 1. First we will drop any NaN labelled rows
     subject_original = subject_original.dropna(subset=['Action Label'])
 
-    # 2. We skeleton normalized the subject using hip as the origin
-    subject_normalized = modify_skeleton_normalization(subject_original)
-
-    # 3. We dropped the bad frames for too short of shoulder width 
-    subject_dropped_bad_frames = drop_bad_frames(subject_original, subject_normalized)
-
-    # 4. One of the subject has 'Throwing' and 'Throwing Things' as separate columnd but I want it to be uniform
-    subject_dropped_bad_frames['Action Label'] = subject_dropped_bad_frames['Action Label'].replace(
+    # 2. One of the subject has 'Throwing' and 'Throwing Things' as separate columnd but I want it to be uniform
+    subject_original['Action Label'] = subject_original['Action Label'].replace(
         'Throwing',
         'Throwing things'
     )
 
+    # 3. We skeleton normalized the subject using hip as the origin
+    subject_normalized = modify_skeleton_normalization(subject_original)
+
+    if return_stage == 'normalized':
+        return subject_normalized
+    
+    if drop_bad_shoulder_frames:
+        # (OPTIONAL) 4. We dropped the bad frames for too short of shoulder width 
+        subject_normalized = drop_bad_frames(subject_original, subject_normalized)
+
+    if return_stage == 'clean':
+        return subject_normalized
+    
+    #=========================================================
+    # FEATURE ENGINEERING
+    #=========================================================
+
     # 5. Angles (geometric, no temporal)
-    subject_angles = add_angle_features(subject_dropped_bad_frames)
-    
+    subject_angles = add_angle_features(subject_normalized)
+
     # 6. Range of motion features (relative positions)
-    subject_rom = add_range_of_motion_features(subject_dropped_bad_frames)
-    
+    subject_rom = add_range_of_motion_features(subject_normalized)
+
     # 7. Velocity and acceleration (temporal, frame-level)
-    subject_acc = add_acceleration_features(subject_dropped_bad_frames)
-    
+    subject_acc = add_acceleration_features(subject_normalized)
+
     # 8. Join everything at frame level
-    combined = subject_dropped_bad_frames.reset_index(drop=True).join(
+    combined = subject_normalized.reset_index(drop=True).join(
         subject_angles.reset_index(drop=True)).join(
         subject_rom.reset_index(drop=True)).join(
         subject_acc.reset_index(drop=True))
+
+    if return_stage == 'features':
+        return combined
     
     # 9. Multi-scale windowing
-    windowed = create_multiscale_windowed_features(combined, window_sizes)
-    
+    windowed = create_multiscale_windowed_features(combined, window_sizes, stride)
+
     # We return the processed subject
     return windowed
     
@@ -309,8 +346,133 @@ def preprocessing_pipeline(subject_original, window_sizes=(15, 60)):
 # - window_size: ウィンドウ処理用の(short_window, long_window)フレームサイズのタプル（デフォルト: (15, 60)）。
 # 戻り値:
 # - 同じキーで前処理されたウィンドウ処理DataFrameにマッピングされた辞書。
-def preprocess_all_subjects(all_subject, window_size=(15, 60)):
+def preprocess_all_subjects(all_subject, window_size=(15, 60), stride=10):
     all_subject_norm = {}
     for suffix in FILE_NAME_SUFFIX:
-        all_subject_norm[suffix] = preprocessing_pipeline(all_subject[suffix], window_size)
+        all_subject_norm[suffix] = preprocessing_pipeline(all_subject[suffix], window_size, stride)
     return all_subject_norm
+
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+
+def create_sequence_dataset(
+    df,
+    sequence_length=90,
+    stride=10,
+    label_col='Action Label'
+):
+    """
+    Converts a frame-level DataFrame into 3D sequences for LSTM input.
+
+    Unlike create_multiscale_windowed_features which aggregates frames
+    into statistics, this function preserves the temporal order of frames.
+    Each output sequence is a slice of consecutive frames fed to the LSTM
+    in the order they occurred.
+
+    Shape of output X: (n_sequences, sequence_length, n_features)
+        - n_sequences: how many valid windows were found
+        - sequence_length: number of frames per sequence (e.g. 90)
+        - n_features: number of feature columns (coordinates + angles + ROM + acc)
+
+    Shape of output y: (n_sequences,)
+        - one integer label per sequence (encoded from string labels)
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Frame-level data from a SINGLE subject.
+        Must be the 'features' stage output from preprocessing_pipeline.
+        Should include coordinates, angles, ROM, and acceleration columns.
+    sequence_length : int
+        Number of consecutive frames per sequence. Equivalent to window
+        size in your classical ML pipeline. Paper used 90 as their best.
+    stride : int
+        Step size between sequence start positions.
+        Lower stride = more sequences but more overlap between them.
+    label_col : str
+        Name of the activity label column.
+
+    Returns
+    -------
+    X : np.ndarray, shape (n_sequences, sequence_length, n_features)
+        3D array of frame sequences ready for LSTM input.
+    y : np.ndarray, shape (n_sequences,)
+        Integer-encoded activity labels, one per sequence.
+    label_encoder : sklearn.LabelEncoder
+        Fitted encoder — needed to convert integer predictions back
+        to activity name strings after inference.
+    """
+    feature_cols  = [c for c in df.columns if c != label_col]
+    labels_array  = df[label_col].values
+    feature_array = df[feature_cols].values.astype(np.float32)
+    n_frames      = len(df)
+
+    sequences = []
+    seq_labels = []
+
+    for start in range(0, n_frames - sequence_length + 1, stride):
+        end           = start + sequence_length
+        window_labels = labels_array[start:end]
+
+        # Pure window check — same as classical ML pipeline
+        if len(set(window_labels)) != 1:
+            continue
+
+        sequences.append(feature_array[start:end])
+        seq_labels.append(window_labels[0])
+
+    if not sequences:
+        raise ValueError(
+            f"No valid sequences found. "
+            f"Check that sequence_length={sequence_length} is not longer "
+            f"than your activity segments."
+        )
+
+    X = np.stack(sequences, axis=0)  # shape: (n_seq, seq_len, n_features)
+
+    # Encode string labels to integers
+    # LSTM needs numeric targets, not strings
+    label_encoder = LabelEncoder()
+    y = label_encoder.fit_transform(seq_labels)
+
+    print(f"  Sequences created : {X.shape[0]}")
+    print(f"  Sequence shape    : {X.shape[1:]}  (timesteps × features)")
+    print(f"  Classes encoded   : {list(label_encoder.classes_)}")
+
+    return X, y, label_encoder
+
+
+def build_loso_sequence_datasets(all_subjects_frame_level, sequence_length=90, stride=10):
+    """
+    Applies create_sequence_dataset to all subjects and returns a
+    dictionary ready for LOSO evaluation.
+
+    Parameters
+    ----------
+    all_subjects_frame_level : dict
+        Keys are subject IDs, values are frame-level DataFrames
+        (return_stage='features' output from preprocessing_pipeline).
+    sequence_length : int
+        Frames per sequence.
+    stride : int
+        Step between sequences.
+
+    Returns
+    -------
+    dict
+        Keys are subject IDs.
+        Values are dicts with keys 'X', 'y', 'encoder'.
+    """
+    result = {}
+
+    for subject_id, df in all_subjects_frame_level.items():
+        print(f"\nSubject {subject_id}:")
+        X, y, encoder = create_sequence_dataset(df, sequence_length, stride)
+        result[subject_id] = {
+            'X':       X,
+            'y':       y,
+            'encoder': encoder
+        }
+
+    return result
