@@ -1,6 +1,8 @@
 from pathlib import Path
 
 BASE_DIR = Path("data")
+GRID_SEARCH_DIR = Path("results/grid_search")
+
 BASE_FILE_NAME = "keypoints_with_labels"
 FILE_TYPE = ".csv"
 FILE_NAME_SUFFIX = ["1", "2", "3", "5"]
@@ -13,7 +15,7 @@ RANDOM_FOREST_PARAMS = {
     'min_samples_split': 2,
     'min_samples_leaf': 1,
     'random_state': 42,
-    'n_jobs': 4
+    'n_jobs': 2
 }
 
 HIST_GRADIENT_PARAMS = {

@@ -300,6 +300,7 @@ def preprocessing_pipeline(
     if drop_bad_shoulder_frames:
         # (OPTIONAL) 4. We dropped the bad frames for too short of shoulder width 
         subject_normalized = drop_bad_frames(subject_original, subject_normalized)
+        print('working')
 
     if return_stage == 'clean':
         return subject_normalized
@@ -346,7 +347,7 @@ def preprocessing_pipeline(
 # - window_size: ウィンドウ処理用の(short_window, long_window)フレームサイズのタプル（デフォルト: (15, 60)）。
 # 戻り値:
 # - 同じキーで前処理されたウィンドウ処理DataFrameにマッピングされた辞書。
-def preprocess_all_subjects(all_subject, window_size=(15, 60), stride=10):
+def preprocess_all_subjects(all_subject, window_size=(15, 60), stride=10, return_stage="windowed", drop_bad_shoulder_frames):
     all_subject_norm = {}
     for suffix in FILE_NAME_SUFFIX:
         all_subject_norm[suffix] = preprocessing_pipeline(all_subject[suffix], window_size, stride)

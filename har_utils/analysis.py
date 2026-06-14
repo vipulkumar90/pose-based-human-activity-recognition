@@ -102,8 +102,8 @@ def evaluate_loso(all_subjects, model, verbose='None'):
             # Use default model if none is supplied.
             # モデルが提供されていない場合は、デフォルトのモデルを使用します。
             model = model_random_forest()
-
-        print(f"Model being evaluated: {model.__class__.__name__}")
+        if verbose == 'Medium' or verbose == 'High':
+            print(f"Model being evaluated: {model.__class__.__name__}")
 
         # Train the model on the current fold's training data.
         # 現在のフォールドの学習データでモデルを学習させます。
@@ -188,10 +188,10 @@ def evaluate_loso(all_subjects, model, verbose='None'):
 # - window_size: 前処理用のスライディングウィンドウサイズ（フレーム数）。
 # 戻り値:
 # - evaluate_losoからの被験者別LOSOクロスバリデーション結果の辞書。
-def preprocess_evaluate_loso_supervised(all_subject, model, window_size, stride, verbose=False):
+def preprocess_evaluate_loso_supervised(all_subject, model, window_size, stride, verbose=False, drop_bad_shoulder_frames=False):
     # Apply preprocessing to every subject with the requested window size.
     # 指定されたウィンドウサイズで各被験者の前処理を適用します。
-    all_subject_processed = preprocess_all_subjects(all_subject, window_size, stride)
+    all_subject_processed = preprocess_all_subjects(all_subject, window_size=window_size, stride=stride, drop_bad_shoulder_frames=drop_bad_shoulder_frames)
 
     # Evaluate the preprocessed data using LOSO.
     # 前処理済みデータをLOSOで評価します。
@@ -336,7 +336,7 @@ def evaluate_supervised(all_subjects, model):
 #
 # 戻り値:
 # - 選択された特徴量とラベル列のみを含む被験者DataFrameの辞書。
-def filter_features_by_importance(all_subjects, importance_df, top_n=150, label_col='Action Label'):
+def filter_features_by_importance(all_subjects, importance_df, top_n=150, label_col='Action Label', verbose=False):
     # Select the top N most important features.
     # 上位N個の重要特徴量を取得する。
     top_features = importance_df['feature'].head(top_n).tolist()
@@ -361,7 +361,7 @@ def filter_features_by_importance(all_subjects, importance_df, top_n=150, label_
     # フィルタリング結果の概要を表示する。
     print(f"Features kept: {top_n}")
     print(f"Features dropped: {len(importance_df) - top_n}")
-    print(f"Subjects processed: {list(filtered.keys())}")
+    # print(f"Subjects processed: {list(filtered.keys())}")
 
     return filtered
 
