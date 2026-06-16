@@ -4,47 +4,92 @@ from har_utils.features import (
     add_angle_features,
     add_range_of_motion_features,
     add_acceleration_features,
-    create_multiscale_windowed_features
+    create_multiscale_windowed_features,
+    create_windowed_features
 )
-from tqdm.auto import tqdm
+from sklearn.preprocessing import StandardScaler
+
 
 # English:
-# Purpose: Print summary statistics about NaN and Inf values in a subject DataFrame.
+# Purpose:
+# Generate a summary of common data quality issues for one or more subjects.
+# The function checks for NaN values, infinite values, duplicate rows,
+# and rows containing invalid numeric values.
+#
 # Parameters:
-# - subject_original: DataFrame with pose keypoints and labels.
-# - subject_name: Identifier string for the subject (default: 'Name not provided').
+# - data: Either
+#     * A single subject DataFrame, or
+#     * A dictionary where keys are subject IDs and values are DataFrames.
+# - subject_name: Name of the subject when a single DataFrame is supplied.
+#                 Ignored when a dictionary is provided.
+#
 # Returns:
-# - None. Side effect: Prints NaN and Inf counts to console.
+# - pd.DataFrame where each row summarizes the sanity check statistics
+#   for one subject.
+#
 # 日本語:
-# 目的: 被験者DataFrameのNaN値とInf値の要約統計量を表示します。
+# 目的:
+# 1人または複数被験者のデータ品質を要約します。
+# NaN値、Inf値、重複行、および無効な数値を含む行数を確認します。
+#
 # パラメータ:
-# - subject_original: ポーズキーポイントとラベルを含むDataFrame。
-# - subject_name: 被験者識別文字列（デフォルト: 'Name not provided'）。
+# - data:
+#     * 単一被験者のDataFrame
+#     * またはキーが被験者ID、値がDataFrameの辞書
+# - subject_name:
+#     単一DataFrameの場合の被験者名。
+#     辞書が渡された場合は無視されます。
+#
 # 戻り値:
-# - なし。副作用: NaN値とInf値の数をコンソールに出力します。
-def do_sanity_check(subject_original, subject_name="Name not provided"):
-    print(f"\n{'_'*60}\n")
-    print(f"{' '*15}Sanity Check - {subject_name}")
-    print(f"{'_'*60}")
+# - 被験者ごとのサニティチェック結果をまとめたDataFrame。
+def do_sanity_check(data, subject_name="Unknown"):
 
-    # NaNs per column
-    n_nan = subject_original.isna().sum().to_dict()
+    def _summarize(df, name):
 
-    # Infs per numeric column
-    n_inf = {
-        col: np.isinf(subject_original[col]).sum()
-        for col in subject_original.select_dtypes(include=np.number).columns
-    }
+        numeric_df = df.select_dtypes(include=np.number)
 
-    print("\nNaN counts:")
-    for col, count in n_nan.items():
-        if count:
-            print(f"  {col}: {count}")
+        total_nan = df.isna().sum().sum()
 
-    print("\nInf counts:")
-    for col, count in n_inf.items():
-        if count:
-            print(f"  {col}: {count}")
+        total_inf = np.isinf(numeric_df).sum().sum()
+
+        duplicate_rows = df.duplicated().sum()
+
+        rows_with_nan = df.isna().any(axis=1).sum()
+
+        rows_with_inf = np.isinf(numeric_df).any(axis=1).sum()
+
+        return {
+            "Subject": name,
+            "Rows": len(df),
+            "Columns": df.shape[1],
+            "NaN Count": total_nan,
+            "Inf Count": total_inf,
+            "Rows with NaN": rows_with_nan,
+            "Rows with Inf": rows_with_inf,
+            "Duplicate Rows": duplicate_rows,
+        }
+
+    # Handle a single subject DataFrame.
+    # 単一被験者のDataFrameを処理する。
+    if isinstance(data, pd.DataFrame):
+        return pd.DataFrame([
+            _summarize(data, subject_name)
+        ])
+
+    # Handle multiple subjects stored in a dictionary.
+    # 辞書に格納された複数被験者を処理する。
+    elif isinstance(data, dict):
+        return pd.DataFrame([
+            _summarize(df, subject_id)
+            for subject_id, df in data.items()
+        ])
+
+    # Raise an error for unsupported input types.
+    # サポートされていない入力型の場合は例外を発生させる。
+    else:
+        raise TypeError(
+            "Expected a pandas DataFrame or a dictionary of DataFrames."
+        )
 
 # ==========================================================
 # Calculate shoulder width
@@ -252,8 +297,7 @@ def drop_bad_frames(un_norm_subject, norm_subject):
 # - window_sizes: Tuple of (short_window, long_window) frame sizes for windowing
 #                 (default: (15, 60)).
 # - return_stage: Pipeline stage to return. Supported values:
-#                 'normalized' - normalized skeleton coordinates.
-#                 'clean'      - normalized data after bad-frame removal and label standardization.
+#                 'normalized' - normalized skeleton coordinates.\
 #                 'features'   - frame-level features before windowing.
 #                 'windowed'   - final windowed features (default).
 # Returns:
@@ -270,7 +314,6 @@ def drop_bad_frames(un_norm_subject, norm_subject):
 #                 （デフォルト: (15, 60)）。
 # - return_stage: 返却する前処理段階。指定可能な値:
 #                 'normalized' - スケルトン正規化後のデータ。
-#                 'clean'      - 不良フレーム除去およびラベル統一後のデータ。
 #                 'features'   - ウィンドウ処理前のフレーム単位特徴量。
 #                 'windowed'   - 最終的なウィンドウ化特徴量（デフォルト）。
 # 戻り値:
@@ -280,7 +323,8 @@ def preprocessing_pipeline(
         window_sizes=(15, 60),
         stride=10,
         return_stage='windowed',
-        drop_bad_shoulder_frames=False):
+        drop_bad_shoulder_frames=False,
+        single_window_mode=False):
     
     # 1. First we will drop any NaN labelled rows
     subject_original = subject_original.dropna(subset=['Action Label'])
@@ -293,16 +337,12 @@ def preprocessing_pipeline(
 
     # 3. We skeleton normalized the subject using hip as the origin
     subject_normalized = modify_skeleton_normalization(subject_original)
-
-    if return_stage == 'normalized':
-        return subject_normalized
     
     if drop_bad_shoulder_frames:
         # (OPTIONAL) 4. We dropped the bad frames for too short of shoulder width 
         subject_normalized = drop_bad_frames(subject_original, subject_normalized)
-        print('working')
 
-    if return_stage == 'clean':
+    if return_stage == 'normalized':
         return subject_normalized
     
     #=========================================================
@@ -327,6 +367,12 @@ def preprocessing_pipeline(
     if return_stage == 'features':
         return combined
     
+    # Depreciated: Single Windowing
+    if single_window_mode:
+        single_windowed = create_windowed_features(combined)
+        print("Single windowing mode enabled. Returning single-window features.")
+        return single_windowed
+    
     # 9. Multi-scale windowing
     windowed = create_multiscale_windowed_features(combined, window_sizes, stride)
 
@@ -347,15 +393,25 @@ def preprocessing_pipeline(
 # - window_size: ウィンドウ処理用の(short_window, long_window)フレームサイズのタプル（デフォルト: (15, 60)）。
 # 戻り値:
 # - 同じキーで前処理されたウィンドウ処理DataFrameにマッピングされた辞書。
-def preprocess_all_subjects(all_subject, window_size=(15, 60), stride=10, return_stage="windowed", drop_bad_shoulder_frames):
+def preprocess_all_subjects(all_subject, window_size=(15, 60), stride=10, return_stage="windowed", drop_bad_shoulder_frames=False, single_window_mode=False):
     all_subject_norm = {}
     for suffix in FILE_NAME_SUFFIX:
-        all_subject_norm[suffix] = preprocessing_pipeline(all_subject[suffix], window_size, stride)
+        all_subject_norm[suffix] = preprocessing_pipeline(
+            subject_original=all_subject[suffix], 
+            window_sizes=window_size, 
+            stride=stride,
+            drop_bad_shoulder_frames=drop_bad_shoulder_frames,
+            single_window_mode=single_window_mode,
+            return_stage=return_stage)
     return all_subject_norm
 
 import numpy as np
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
+
+# =================================================================
+# LSTM Preprocessing
+# =================================================================
 
 def create_sequence_dataset(
     df,
@@ -477,3 +533,29 @@ def build_loso_sequence_datasets(all_subjects_frame_level, sequence_length=90, s
         }
 
     return result
+
+
+def scale_sequences(X_train, X_test):
+    """
+    Standardizes sequence data to zero mean and unit variance.
+    Fitted on training data only, applied to both train and test.
+    
+    X shape: (n_sequences, sequence_length, n_features)
+    Scaler operates on the feature dimension (axis=-1) only.
+    """
+    n_train, seq_len, n_features = X_train.shape
+    n_test  = X_test.shape[0]
+
+    # Reshape to 2D to fit scaler — (n_sequences * seq_len, n_features)
+    X_train_2d = X_train.reshape(-1, n_features)
+    X_test_2d  = X_test.reshape(-1, n_features)
+
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train_2d)
+    X_test_scaled  = scaler.transform(X_test_2d)
+
+    # Reshape back to 3D
+    return (
+        X_train_scaled.reshape(n_train, seq_len, n_features),
+        X_test_scaled.reshape(n_test,  seq_len, n_features)
+    )

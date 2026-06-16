@@ -222,3 +222,6 @@ model_history
 
 # Dataset
 data
+
+# Plots
+feature_distribution_plots

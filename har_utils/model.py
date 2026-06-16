@@ -7,6 +7,10 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from xgboost import XGBClassifier
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense, Dropout
+
 
 from har_utils.config import (
     ADABOOST_PARAMS,
@@ -361,3 +365,41 @@ def model_agglomerative(hyperparams=None):
     hyperparams = hyperparams or AGGLOMERATIVE_PARAMS
     return AgglomerativeClustering(**hyperparams)
 
+def build_lstm_model(sequence_length, n_features, n_classes, lstm_units=64):
+    """
+    Single LSTM model matching the paper's architecture.
+    
+    Architecture:
+        Input  → (sequence_length, n_features)
+        LSTM   → 64 units, learns temporal dependencies
+        Dropout → 0.3, reduces overfitting
+        Dense  → n_classes, softmax output
+    
+    Parameters
+    ----------
+    sequence_length : int
+        Number of timesteps per sequence (e.g. 90).
+    n_features : int
+        Number of features per frame (e.g. 118).
+    n_classes : int
+        Number of activity classes (8).
+    lstm_units : int
+        Number of LSTM memory units (paper used 64).
+    """
+    model = Sequential([
+        LSTM(
+            lstm_units,
+            input_shape=(sequence_length, n_features),
+            return_sequences=False  # many-to-one: one label per sequence
+        ),
+        Dropout(0.3),
+        Dense(n_classes, activation='softmax')
+    ])
+
+    model.compile(
+        optimizer='adam',
+        loss='categorical_crossentropy',
+        metrics=['accuracy']
+    )
+
+    return model

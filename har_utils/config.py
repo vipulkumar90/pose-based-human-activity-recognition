@@ -2,6 +2,7 @@ from pathlib import Path
 
 BASE_DIR = Path("data")
 GRID_SEARCH_DIR = Path("results/grid_search")
+MODEL_HISTORY = Path("model_history")
 
 BASE_FILE_NAME = "keypoints_with_labels"
 FILE_TYPE = ".csv"

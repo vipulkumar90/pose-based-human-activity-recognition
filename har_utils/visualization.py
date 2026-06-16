@@ -3,6 +3,8 @@ import seaborn as sns
 from sklearn.metrics import confusion_matrix
 import os
 import math
+import pandas as pd
+import numpy as np
 
 # English:
 # Purpose: Plot a single feature before and after transformation on the same axes with overlaid lines.
@@ -174,71 +176,201 @@ def plot_compare_histograms(
     plt.show()
 
 # English:
-# Purpose: Create a horizontal bar chart showing the count of frames for each activity class.
+# Purpose:
+# Plot the activity class distribution for one or more subjects.
+# When multiple subjects are provided, the function automatically
+# arranges the plots into a suitable subplot grid.
+#
 # Parameters:
-# - subject: DataFrame with an 'Action Label' column containing activity names.
-# - subject_name: Identifier string for the subject (default: 'No Subject Name Provided').
+# - data:
+#     * A single subject DataFrame, or
+#     * A dictionary where keys are subject IDs and values are DataFrames.
+#
 # Returns:
-# - None. Side effect: Displays horizontal bar chart to screen.
+# - None. Side effect: Displays one or more horizontal bar charts.
+#
 # 日本語:
-# 目的: 各活動クラスのフレーム数を示す水平棒グラフを作成します。
+# 目的:
+# 1人または複数被験者の活動クラス分布を表示します。
+# 複数被験者が入力された場合は、自動的に適切なサブプロット配置で
+# 水平棒グラフを表示します。
+#
 # パラメータ:
-# - subject: アクティビティ名を含む'Action Label'列を持つDataFrame。
-# - subject_name: 被験者識別文字列（デフォルト: 'No Subject Name Provided'）。
+# - data:
+#     * 単一被験者のDataFrame
+#     * またはキーが被験者ID、値がDataFrameの辞書
+#
 # 戻り値:
-# - なし。副作用: 水平棒グラフを画面に表示します。
-def plot_class_distribution(subject, subject_name="No Subject Name Provided"):
-    labels = subject['Action Label'].fillna('Unlabelled')
-    labels.value_counts().plot(kind='barh')
-    
-    plt.title(f'Class Distribution: {subject_name}')
-    plt.xlabel('Number of Frames')
-    plt.ylabel('Activity')
-    plt.xticks(rotation=45)
+# - なし。副作用: 活動クラス分布の水平棒グラフを表示します。
+def plot_class_distribution(data):
+
+    import math
+
+    # Handle a single subject DataFrame.
+    # 単一被験者のDataFrameを処理する。
+    if isinstance(data, pd.DataFrame):
+        subjects = {"Subject": data}
+
+    # Handle multiple subjects stored in a dictionary.
+    # 辞書に格納された複数被験者を処理する。
+    elif isinstance(data, dict):
+        subjects = data
+
+    else:
+        raise TypeError(
+            "Expected a pandas DataFrame or a dictionary of DataFrames."
+        )
+
+    n_subjects = len(subjects)
+
+    # Determine an appropriate subplot layout.
+    # 被験者数に応じてサブプロット配置を決定する。
+    if n_subjects == 1:
+        rows, cols = 1, 1
+    elif n_subjects <= 3:
+        rows, cols = 1, n_subjects
+    elif n_subjects <= 4:
+        rows, cols = 2, 2
+    else:
+        cols = 3
+        rows = math.ceil(n_subjects / cols)
+
+    fig, axes = plt.subplots(
+        rows,
+        cols,
+        figsize=(6 * cols, 4 * rows)
+    )
+
+    if n_subjects == 1:
+        axes = [axes]
+    else:
+        axes = np.array(axes).flatten()
+
+    for ax, (subject_name, subject) in zip(axes, subjects.items()):
+
+        labels = subject["Action Label"].fillna("Unlabelled")
+        counts = labels.value_counts()
+
+        ax.barh(counts.index, counts.values)
+
+        ax.set_title(f"{subject_name}")
+        ax.set_xlabel("Number of Frames")
+        ax.set_ylabel("Activity")
+
+    # Remove any unused subplot axes.
+    # 使用されなかったサブプロットを削除する。
+    for ax in axes[n_subjects:]:
+        fig.delaxes(ax)
+
+    fig.suptitle("Class Distribution", fontsize=16)
+
     plt.tight_layout()
     plt.show()
 
 # English:
-# Purpose: Create a pie chart showing percentage distribution of activity classes.
+# Purpose:
+# Plot the percentage distribution of activity classes for one or more subjects.
+# When multiple subjects are provided, the function automatically
+# arranges the plots into a suitable subplot grid.
+#
 # Parameters:
-# - subject: DataFrame with an 'Action Label' column containing activity names.
-# - subject_name: Identifier string for the subject (default: 'No Subject Name Provided').
+# - data:
+#     * A single subject DataFrame, or
+#     * A dictionary where keys are subject IDs and values are DataFrames.
+#
 # Returns:
-# - None. Side effect: Displays pie chart with legend to screen.
+# - None. Side effect: Displays one or more pie charts.
+#
 # 日本語:
-# 目的: 活動クラスのパーセンテージ分布を示す円グラフを作成します。
+# 目的:
+# 1人または複数被験者の活動クラス割合を表示します。
+# 複数被験者が入力された場合は、自動的に適切なサブプロット配置で
+# 円グラフを表示します。
+#
 # パラメータ:
-# - subject: アクティビティ名を含む'Action Label'列を持つDataFrame。
-# - subject_name: 被験者識別文字列（デフォルト: 'No Subject Name Provided'）。
+# - data:
+#     * 単一被験者のDataFrame
+#     * またはキーが被験者ID、値がDataFrameの辞書
+#
 # 戻り値:
-# - なし。副作用: 凡例付きの円グラフを画面に表示します。
-def plot_percentage_distribution(subject, subject_name="No Subject Name Provided"):
-    # Percentage Distribution
-    class_pct = (
-        subject['Action Label']
-            .fillna('Unlabelled')
+# - なし。副作用: 活動クラス割合の円グラフを表示します。
+def plot_percentage_distribution(data):
+
+    import math
+
+    # Handle a single subject DataFrame.
+    # 単一被験者のDataFrameを処理する。
+    if isinstance(data, pd.DataFrame):
+        subjects = {"Subject": data}
+
+    # Handle multiple subjects stored in a dictionary.
+    # 辞書に格納された複数被験者を処理する。
+    elif isinstance(data, dict):
+        subjects = data
+
+    else:
+        raise TypeError(
+            "Expected a pandas DataFrame or a dictionary of DataFrames."
+        )
+
+    n_subjects = len(subjects)
+
+    # Determine an appropriate subplot layout.
+    # 被験者数に応じてサブプロット配置を決定する。
+    if n_subjects == 1:
+        rows, cols = 1, 1
+    elif n_subjects <= 3:
+        rows, cols = 1, n_subjects
+    elif n_subjects <= 4:
+        rows, cols = 2, 2
+    else:
+        cols = 3
+        rows = math.ceil(n_subjects / cols)
+
+    fig, axes = plt.subplots(
+        rows,
+        cols,
+        figsize=(6 * cols, 5 * rows)
+    )
+
+    if n_subjects == 1:
+        axes = [axes]
+    else:
+        axes = np.array(axes).flatten()
+
+    for ax, (subject_name, subject) in zip(axes, subjects.items()):
+
+        class_pct = (
+            subject["Action Label"]
+            .fillna("Unlabelled")
             .value_counts(normalize=True)
             .mul(100)
-    )
-    
-    plt.figure(figsize=(6, 6))
-    
-    wedges, texts, autotexts = plt.pie(
-        class_pct,
-        autopct='%1.1f%%',
-        startangle=90
-    )
-    
-    plt.legend(
-        wedges,
-        class_pct.index,
-        title="Activities",
-        loc="center left",
-        bbox_to_anchor=(1, 0.5),
-        fontsize=8
-    )
-    
-    plt.title(f"Activity Distribution (%): {subject_name}")
+        )
+
+        wedges, texts, autotexts = ax.pie(
+            class_pct.values,
+            autopct="%1.1f%%",
+            startangle=90
+        )
+
+        ax.legend(
+            wedges,
+            class_pct.index,
+            title="Activities",
+            loc="center left",
+            bbox_to_anchor=(1, 0.5),
+            fontsize=8
+        )
+
+        ax.set_title(f'{subject_name}')
+
+    # Remove any unused subplot axes.
+    # 使用されなかったサブプロットを削除する。
+    for ax in axes[n_subjects:]:
+        fig.delaxes(ax)
+
+    fig.suptitle("Activity Distribution (%)", fontsize=16)
+
     plt.tight_layout()
     plt.show()
 
@@ -261,7 +393,7 @@ def plot_percentage_distribution(subject, subject_name="No Subject Name Provided
 def plot_confusion_matrix(y_test, prediction, title="Normalized Confusion Matrix"):
     cm = confusion_matrix(y_test, prediction, normalize='true')
 
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(8, 6))
     labels = sorted(y_test.unique())
     
     sns.heatmap(

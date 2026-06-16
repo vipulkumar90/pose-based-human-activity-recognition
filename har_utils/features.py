@@ -146,7 +146,7 @@ def add_angle_features(df):
 # 戻り値:
 # - ウィンドウ処理された特徴量（平均、標準偏差、最小値、最大値）とラベルのDataFrame。
 # 副作用: DeprecationWarningをコンソールに出力します。
-def create_windowed_features(df, window_size=30, stride=10, label_col='Action Label'):
+def create_windowed_features(df, window_size=20, stride=10, label_col='Action Label'):
 
     warnings.warn(
         "create_windowed_features() is deprecated. "
