@@ -367,7 +367,7 @@ def preprocessing_pipeline(
     if return_stage == 'features':
         return combined
     
-    # Depreciated: Single Windowing
+    # Deprecated: Single Windowing
     if single_window_mode:
         single_windowed = create_windowed_features(combined)
         print("Single windowing mode enabled. Returning single-window features.")
