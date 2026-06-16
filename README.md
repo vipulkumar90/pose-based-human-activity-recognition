@@ -110,12 +110,19 @@ The resulting feature vectors capture both short-term movements and long-term po
 
 ---
 
-## Model
+### Model
 
-Current models include:
+The primary models evaluated in this project are:
 
-- Random Forest
-- Histogram Gradient Boosting (experimental)
+- Random Forest (baseline)
+- Extra Trees
+- XGBoost
+- LSTM (Deep Learning)
+
+Random Forest serves as the baseline model throughout the feature engineering experiments. Extra Trees and XGBoost are evaluated using the optimized preprocessing pipeline and hyperparameter tuning to compare performance.
+
+The project also includes modular model builders and default hyperparameter configurations for additional classifiers (e.g., Logistic Regression, SVM, KNN, AdaBoost, Decision Tree, Histogram Gradient Boosting, Gaussian Naive Bayes) as well as an LSTM implementation. These components are provided to simplify future experimentation but are not part of the current evaluation presented in this repository.
+
 
 Random Forest is currently the primary classifier.
 
@@ -154,26 +161,31 @@ har_utils/
 
 ## Technologies
 
-- Python
-- Pandas
-- NumPy
-- Scikit-learn
-- Matplotlib
-- Seaborn
+* Python
+* Pandas
+* NumPy
+* Scikit-learn
+* TensorFlow / Keras
+* XGBoost
+* Optuna
+* Matplotlib
+* Seaborn
 
 ---
 
 ## Current Feature Set
 
-- Skeleton normalization
-- Joint angle computation
-- Velocity and acceleration features
-- Range-of-motion features
-- Multi-scale temporal windowing
-- Random Forest classification
-- LOSO cross-validation
-- Feature importance analysis
-- Confusion matrix visualization
+* Skeleton normalization
+* Joint angle computation
+* Range-of-motion features
+* Velocity and acceleration features
+* Multi-scale temporal windowing
+* Multiple classical machine learning models
+* LSTM sequence modeling
+* Leave-One-Subject-Out (LOSO) cross-validation
+* Optuna hyperparameter optimization
+* Feature importance analysis
+* Confusion matrix visualization
 
 ---
 

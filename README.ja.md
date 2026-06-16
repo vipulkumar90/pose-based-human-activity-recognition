@@ -110,14 +110,17 @@ Leave-One-Subject-Out 評価
 
 ---
 
-## モデル
+### モデル
 
-現在実装されているモデル:
+本プロジェクトで評価を行っている主なモデルは以下の3つです。
 
-* Random Forest
-* Histogram Gradient Boosting（実験段階）
+- Random Forest（ベースライン）
+- Extra Trees
+- XGBoost
 
-現在の主な分類器は Random Forest です。
+Random Forest をベースラインモデルとして特徴量エンジニアリングおよび各種実験を実施し、その後、最適化した前処理パイプラインとハイパーパラメータを用いて Extra Trees および XGBoost の性能を比較・評価しています。
+
+また、本プロジェクトには Logistic Regression、SVM、K-Nearest Neighbors（KNN）、AdaBoost、Decision Tree、Histogram Gradient Boosting、Gaussian Naive Bayes などの分類器や、LSTM モデルの実装およびデフォルトのハイパーパラメータ設定も含まれています。これらは将来的な比較実験や拡張を容易にするために実装されており、現時点での評価結果には含まれていません。
 
 ---
 
@@ -154,26 +157,31 @@ har_utils/
 
 ## 使用技術
 
-* Python
-* Pandas
-* NumPy
-* Scikit-learn
-* Matplotlib
-* Seaborn
+- Python
+- Pandas
+- NumPy
+- Scikit-learn
+- TensorFlow / Keras
+- XGBoost
+- Optuna
+- Matplotlib
+- Seaborn
 
 ---
 
-## 現在の特徴量セット
+## 現在実装されている機能
 
-* スケルトン正規化
-* 関節角度の計算
-* 速度および加速度特徴量
-* 可動域特徴量
-* マルチスケール時間窓処理
-* Random Forest による分類
-* LOSO交差検証
-* 特徴量重要度の分析
-* 混同行列の可視化
+- スケルトン正規化
+- 関節角度特徴量
+- 可動域（Range of Motion）特徴量
+- 速度・加速度特徴量
+- マルチスケール時間窓特徴量
+- Leave-One-Subject-Out（LOSO）交差検証
+- Optuna を用いたハイパーパラメータ最適化
+- 特徴量重要度解析
+- Confusion Matrix の可視化
+- Random Forest、Extra Trees、XGBoost の比較評価
+- LSTM による時系列モデルの実験
 
 ---
 
