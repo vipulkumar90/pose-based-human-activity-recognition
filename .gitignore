@@ -219,3 +219,9 @@ __marimo__/
 
 # Model Folder
 model_history
+
+# Dataset
+data
+
+# Plots
+feature_distribution_plots

@@ -1,5 +1,7 @@
 # Human Activity Recognition using 2D Pose Estimation
 
+🇯🇵 日本語版はこちら → [README.ja.md](README.ja.md)
+
 A machine learning pipeline for recognizing human activities from 2D pose keypoints. This project focuses on feature engineering, skeleton normalization, and subject-independent evaluation using Leave-One-Subject-Out (LOSO) cross-validation.
 
 ---

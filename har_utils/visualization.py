@@ -3,7 +3,31 @@ import seaborn as sns
 from sklearn.metrics import confusion_matrix
 import os
 import math
+import pandas as pd
+import numpy as np
 
+# English:
+# Purpose: Plot a single feature before and after transformation on the same axes with overlaid lines.
+# Parameters:
+# - original_df: DataFrame with original (untransformed) values.
+# - transformed_df: DataFrame with normalized/transformed values.
+# - feature: Column name to visualize.
+# - subject_name: Label for the plot title.
+# - start: Starting row index for slicing (default: None, use entire range).
+# - end: Ending row index for slicing (default: None, use entire range).
+# Returns:
+# - None. Side effect: Displays matplotlib plot to screen.
+# 日本語:
+# 目的: 変換前後の単一特徴量を同じ軸に重ね描きします。
+# パラメータ:
+# - original_df: 元の値を含むDataFrame。
+# - transformed_df: 正規化/変換後の値を含むDataFrame。
+# - feature: 可視化する列名。
+# - subject_name: プロットタイトルのラベル。
+# - start: スライス用の開始行インデックス（デフォルト: None、全範囲使用）。
+# - end: スライス用の終了行インデックス（デフォルト: None、全範囲使用）。
+# 戻り値:
+# - なし。副作用: matplotlibプロットを画面に表示します。
 def plot_compare_feature(
     original_df,
     transformed_df,
@@ -12,26 +36,6 @@ def plot_compare_feature(
     start=None,
     end=None
 ):
-    """
-    Compare a feature before and after normalization.
-
-    Parameters
-    ----------
-    original_df : pd.DataFrame
-        Original dataframe
-
-    transformed_df : pd.DataFrame
-        Normalized/transformed dataframe
-
-    feature : str
-        Column name to visualize
-
-    start : int, optional
-        Starting row index
-
-    end : int, optional
-        Ending row index
-    """
 
     plt.figure(figsize=(12, 5))
 
@@ -55,9 +59,29 @@ def plot_compare_feature(
 
     plt.tight_layout()
     plt.show()
-    
-# ==========================================
 
+# English:
+# Purpose: Plot before and after feature transformation on separate side-by-side axes.
+# Parameters:
+# - original_df: DataFrame with original (untransformed) values.
+# - transformed_df: DataFrame with normalized/transformed values.
+# - feature: Column name to visualize.
+# - subject_name: Label for the plot title.
+# - start: Starting row index for slicing (default: None, use entire range).
+# - end: Ending row index for slicing (default: None, use entire range).
+# Returns:
+# - None. Side effect: Displays matplotlib figure with 1x2 subplots to screen.
+# 日本語:
+# 目的: 変換前後の特徴量を並んだ個別の軸に描画します。
+# パラメータ:
+# - original_df: 元の値を含むDataFrame。
+# - transformed_df: 正規化/変換後の値を含むDataFrame。
+# - feature: 可視化する列名。
+# - subject_name: プロットタイトルのラベル。
+# - start: スライス用の開始行インデックス（デフォルト: None、全範囲使用）。
+# - end: スライス用の終了行インデックス（デフォルト: None、全範囲使用）。
+# 戻り値:
+# - なし。副作用: 1x2サブプロット付きmatplotlibフィギュアを画面に表示します。
 def plot_compare_feature_side_by_side(
     original_df,
     transformed_df,
@@ -66,10 +90,6 @@ def plot_compare_feature_side_by_side(
     start=None,
     end=None
 ):
-    """
-    Compare a feature before and after transformation
-    using separate axes.
-    """
 
     fig, axes = plt.subplots(
         1, 2,
@@ -105,7 +125,24 @@ def plot_compare_feature_side_by_side(
     plt.tight_layout()
     plt.show()
 
-# ===============================================
+# English:
+# Purpose: Create side-by-side histograms of feature distributions before and after transformation.
+# Parameters:
+# - original_df: DataFrame with original (untransformed) feature values.
+# - transformed_df: DataFrame with normalized/transformed feature values.
+# - feature: Column name of the feature to visualize.
+# - bins: Number of histogram bins (default: 50).
+# Returns:
+# - None. Side effect: Displays matplotlib figure with two histograms to screen.
+# 日本語:
+# 目的: 変換前後の特徴量分布を並んだヒストグラムで描画します。
+# パラメータ:
+# - original_df: 元の特徴量値を含むDataFrame。
+# - transformed_df: 正規化/変換後の特徴量値を含むDataFrame。
+# - feature: 可視化する特徴量の列名。
+# - bins: ヒストグラムのビン数（デフォルト: 50）。
+# 戻り値:
+# - なし。副作用: 2つのヒストグラムを含むmatplotlibフィギュアを画面に表示します。
 def plot_compare_histograms(
     original_df,
     transformed_df,
@@ -138,51 +175,225 @@ def plot_compare_histograms(
     plt.tight_layout()
     plt.show()
 
-def plot_class_distribution(subject, subject_name="No Subject Name Provided"):
-    labels = subject['Action Label'].fillna('Unlabelled')
-    labels.value_counts().plot(kind='barh')
-    
-    plt.title(f'Class Distribution: {subject_name}')
-    plt.xlabel('Number of Frames')
-    plt.ylabel('Activity')
-    plt.xticks(rotation=45)
+# English:
+# Purpose:
+# Plot the activity class distribution for one or more subjects.
+# When multiple subjects are provided, the function automatically
+# arranges the plots into a suitable subplot grid.
+#
+# Parameters:
+# - data:
+#     * A single subject DataFrame, or
+#     * A dictionary where keys are subject IDs and values are DataFrames.
+#
+# Returns:
+# - None. Side effect: Displays one or more horizontal bar charts.
+#
+# 日本語:
+# 目的:
+# 1人または複数被験者の活動クラス分布を表示します。
+# 複数被験者が入力された場合は、自動的に適切なサブプロット配置で
+# 水平棒グラフを表示します。
+#
+# パラメータ:
+# - data:
+#     * 単一被験者のDataFrame
+#     * またはキーが被験者ID、値がDataFrameの辞書
+#
+# 戻り値:
+# - なし。副作用: 活動クラス分布の水平棒グラフを表示します。
+def plot_class_distribution(data):
+
+    import math
+
+    # Handle a single subject DataFrame.
+    # 単一被験者のDataFrameを処理する。
+    if isinstance(data, pd.DataFrame):
+        subjects = {"Subject": data}
+
+    # Handle multiple subjects stored in a dictionary.
+    # 辞書に格納された複数被験者を処理する。
+    elif isinstance(data, dict):
+        subjects = data
+
+    else:
+        raise TypeError(
+            "Expected a pandas DataFrame or a dictionary of DataFrames."
+        )
+
+    n_subjects = len(subjects)
+
+    # Determine an appropriate subplot layout.
+    # 被験者数に応じてサブプロット配置を決定する。
+    if n_subjects == 1:
+        rows, cols = 1, 1
+    elif n_subjects <= 3:
+        rows, cols = 1, n_subjects
+    elif n_subjects <= 4:
+        rows, cols = 2, 2
+    else:
+        cols = 3
+        rows = math.ceil(n_subjects / cols)
+
+    fig, axes = plt.subplots(
+        rows,
+        cols,
+        figsize=(6 * cols, 4 * rows)
+    )
+
+    if n_subjects == 1:
+        axes = [axes]
+    else:
+        axes = np.array(axes).flatten()
+
+    for ax, (subject_name, subject) in zip(axes, subjects.items()):
+
+        labels = subject["Action Label"].fillna("Unlabelled")
+        counts = labels.value_counts()
+
+        ax.barh(counts.index, counts.values)
+
+        ax.set_title(f"{subject_name}")
+        ax.set_xlabel("Number of Frames")
+        ax.set_ylabel("Activity")
+
+    # Remove any unused subplot axes.
+    # 使用されなかったサブプロットを削除する。
+    for ax in axes[n_subjects:]:
+        fig.delaxes(ax)
+
+    fig.suptitle("Class Distribution", fontsize=16)
+
     plt.tight_layout()
     plt.show()
 
-def plot_percentage_distribution(subject, subject_name="No Subject Name Provided"):
-    # Percentage Distribution
-    class_pct = (
-        subject['Action Label']
-            .fillna('Unlabelled')
+# English:
+# Purpose:
+# Plot the percentage distribution of activity classes for one or more subjects.
+# When multiple subjects are provided, the function automatically
+# arranges the plots into a suitable subplot grid.
+#
+# Parameters:
+# - data:
+#     * A single subject DataFrame, or
+#     * A dictionary where keys are subject IDs and values are DataFrames.
+#
+# Returns:
+# - None. Side effect: Displays one or more pie charts.
+#
+# 日本語:
+# 目的:
+# 1人または複数被験者の活動クラス割合を表示します。
+# 複数被験者が入力された場合は、自動的に適切なサブプロット配置で
+# 円グラフを表示します。
+#
+# パラメータ:
+# - data:
+#     * 単一被験者のDataFrame
+#     * またはキーが被験者ID、値がDataFrameの辞書
+#
+# 戻り値:
+# - なし。副作用: 活動クラス割合の円グラフを表示します。
+def plot_percentage_distribution(data):
+
+    import math
+
+    # Handle a single subject DataFrame.
+    # 単一被験者のDataFrameを処理する。
+    if isinstance(data, pd.DataFrame):
+        subjects = {"Subject": data}
+
+    # Handle multiple subjects stored in a dictionary.
+    # 辞書に格納された複数被験者を処理する。
+    elif isinstance(data, dict):
+        subjects = data
+
+    else:
+        raise TypeError(
+            "Expected a pandas DataFrame or a dictionary of DataFrames."
+        )
+
+    n_subjects = len(subjects)
+
+    # Determine an appropriate subplot layout.
+    # 被験者数に応じてサブプロット配置を決定する。
+    if n_subjects == 1:
+        rows, cols = 1, 1
+    elif n_subjects <= 3:
+        rows, cols = 1, n_subjects
+    elif n_subjects <= 4:
+        rows, cols = 2, 2
+    else:
+        cols = 3
+        rows = math.ceil(n_subjects / cols)
+
+    fig, axes = plt.subplots(
+        rows,
+        cols,
+        figsize=(6 * cols, 5 * rows)
+    )
+
+    if n_subjects == 1:
+        axes = [axes]
+    else:
+        axes = np.array(axes).flatten()
+
+    for ax, (subject_name, subject) in zip(axes, subjects.items()):
+
+        class_pct = (
+            subject["Action Label"]
+            .fillna("Unlabelled")
             .value_counts(normalize=True)
             .mul(100)
-    )
-    
-    plt.figure(figsize=(6, 6))
-    
-    wedges, texts, autotexts = plt.pie(
-        class_pct,
-        autopct='%1.1f%%',
-        startangle=90
-    )
-    
-    plt.legend(
-        wedges,
-        class_pct.index,
-        title="Activities",
-        loc="center left",
-        bbox_to_anchor=(1, 0.5),
-        fontsize=8
-    )
-    
-    plt.title(f"Activity Distribution (%): {subject_name}")
+        )
+
+        wedges, texts, autotexts = ax.pie(
+            class_pct.values,
+            autopct="%1.1f%%",
+            startangle=90
+        )
+
+        ax.legend(
+            wedges,
+            class_pct.index,
+            title="Activities",
+            loc="center left",
+            bbox_to_anchor=(1, 0.5),
+            fontsize=8
+        )
+
+        ax.set_title(f'{subject_name}')
+
+    # Remove any unused subplot axes.
+    # 使用されなかったサブプロットを削除する。
+    for ax in axes[n_subjects:]:
+        fig.delaxes(ax)
+
+    fig.suptitle("Activity Distribution (%)", fontsize=16)
+
     plt.tight_layout()
     plt.show()
 
+# English:
+# Purpose: Create and display a normalized confusion matrix heatmap from predictions and true labels.
+# Parameters:
+# - y_test: True labels for the test set.
+# - prediction: Predicted labels from the classifier.
+# - title: Title for the heatmap (default: 'Normalized Confusion Matrix').
+# Returns:
+# - None. Side effect: Displays normalized confusion matrix heatmap to screen.
+# 日本語:
+# 目的: 予測値と真のラベルから正規化混同行列ヒートマップを作成・表示します。
+# パラメータ:
+# - y_test: テストセットの真のラベル。
+# - prediction: 分類器からの予測ラベル。
+# - title: ヒートマップのタイトル（デフォルト: 'Normalized Confusion Matrix'）。
+# 戻り値:
+# - なし。副作用: 正規化混同行列ヒートマップを画面に表示します。
 def plot_confusion_matrix(y_test, prediction, title="Normalized Confusion Matrix"):
     cm = confusion_matrix(y_test, prediction, normalize='true')
 
-    plt.figure(figsize=(10, 8))
+    plt.figure(figsize=(8, 6))
     labels = sorted(y_test.unique())
     
     sns.heatmap(
@@ -206,6 +417,30 @@ def plot_confusion_matrix(y_test, prediction, title="Normalized Confusion Matrix
     plt.tight_layout()
     plt.show()
 
+# English:
+# Purpose: Create and save histograms of a feature across subjects for a specific activity class.
+# Arranges plots in a grid, one subplot per subject.
+# Parameters:
+# - subjects_dict: Dictionary mapping subject names to DataFrames.
+# - feature: Column name of the feature to visualize.
+# - activity_class: Activity label value to filter for visualization.
+# - label_col: Name of the activity label column (default: 'Action Label').
+# - bins: Number of histogram bins per subplot (default: 40).
+# - save_dir: Directory path for saving PNG file (default: 'feature_distribution_plots').
+# Returns:
+# - None. Side effect: Creates save_dir, generates feature__{class}.png, displays plot to screen.
+# 日本語:
+# 目的: 特定の活動クラスについて、被験者全体にわたる特徴量ヒストグラムを作成・保存します。
+# プロット配置をグリッド上に配置し、被験者ごとに1つのサブプロット。
+# パラメータ:
+# - subjects_dict: 被験者名をDataFrameにマッピングする辞書。
+# - feature: 可視化する特徴量の列名。
+# - activity_class: フィルタリング対象のアクティビティラベル値。
+# - label_col: アクティビティラベル列の名前（デフォルト: 'Action Label'）。
+# - bins: サブプロットごとのヒストグラムビン数（デフォルト: 40）。
+# - save_dir: PNG保存先ディレクトリパス（デフォルト: 'feature_distribution_plots'）。
+# 戻り値:
+# - なし。副作用: save_dirを作成し、feature__{class}.pngを生成して、画面に表示します。
 def plot_feature_class_across_subjects(
     subjects_dict,
     feature,
